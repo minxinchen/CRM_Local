@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信件 Inbox - CRM 系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-50" x-data="emailsApp()" x-init="init()">
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex space-x-8">
+                    <a href="index.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">任務總覽</a>
+                    <a href="customers.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">客戶管理</a>
+                    <a href="cases.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">案件管理</a>
+                    <a href="emails.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-blue-500 text-sm font-medium text-gray-900">信件 Inbox</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">信件 Inbox</h1>
+        <div class="mb-6 bg-white p-4 rounded-lg shadow">
+            <label class="block text-sm font-medium text-gray-700 mb-2">選擇 emails.xlsx 檔案：</label>
+            <input type="file" @change="handleFileUpload($event)" accept=".xlsx,.xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            <p class="mt-2 text-xs text-gray-500">提示：執行 scripts/import-outlook-emails-excel.ps1 來匯入 Outlook 郵件</p>
+        </div>
+        <div class="space-y-4">
+            <template x-if="emails.length === 0">
+                <div class="bg-white p-6 rounded-lg shadow text-center text-gray-500">請載入 emails.xlsx 檔案</div>
+            </template>
+            <template x-for="email in emails" :key="email.ID">
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1">
+                            <h3 class="text-lg font-medium text-gray-900" x-text="email['主旨']"></h3>
+                            <p class="mt-1 text-sm text-gray-600">寄件者: <span x-text="email['寄件者Email']"></span></p>
+                            <p class="mt-1 text-sm text-gray-500" x-text="(email['內文'] || '').substring(0, 200) + '...'"></p>
+                            <p class="mt-2 text-xs text-gray-400" x-text="'收件時間: ' + email['收件時間']"></p>
+                        </div>
+                        <span :class="email['處理狀態'] === 'unprocessed' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'" 
+                              class="px-2 py-1 text-xs font-semibold rounded-full" 
+                              x-text="email['處理狀態'] === 'unprocessed' ? '未處理' : '已處理'"></span>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </div>
+    <script>
+        function emailsApp() {
+            return {
+                emails: [],
+                init() {},
+                handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+                            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                            this.emails = XLSX.utils.sheet_to_json(worksheet);
+
+                            // 修復：按收件時間倒序排序（最新的在最上面）
+                            this.emails.sort((a, b) => {
+                                const dateA = new Date(a['收件時間'] || 0);
+                                const dateB = new Date(b['收件時間'] || 0);
+                                return dateB - dateA;
+                            });
+
+                            alert(`成功載入 ${this.emails.length} 封郵件！`);
+                        } catch (error) {
+                            alert('讀取失敗：' + error.message);
+                        }
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

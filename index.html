@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任務總覽 - CRM 系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50" x-data="crmApp()" x-init="init()">
+    <!-- 導覽列 -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex space-x-8">
+                    <a href="index.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-blue-500 text-sm font-medium text-gray-900">
+                        任務總覽
+                    </a>
+                    <a href="customers.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        客戶管理
+                    </a>
+                    <a href="cases.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        案件管理
+                    </a>
+                    <a href="emails.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        信件 Inbox
+                    </a>
+                </div>
+                <div class="flex items-center">
+                    <button @click="loadTasks()" class="ml-4 px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        重新載入
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">任務總覽</h1>
+            <p class="mt-2 text-sm text-gray-600">管理您的所有待辦事項</p>
+        </div>
+
+        <!-- 檔案選擇器 -->
+        <div class="mb-6 bg-white p-4 rounded-lg shadow">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+                選擇 tasks.xlsx 檔案：
+            </label>
+            <input type="file" @change="handleFileUpload($event)" accept=".xlsx,.xls" :disabled="loading"
+                   class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50">
+            <p class="mt-2 text-xs text-gray-500">請選擇 data/tasks.xlsx 檔案</p>
+
+            <!-- 載入指示器 -->
+            <div x-show="loading" class="mt-3 flex items-center text-blue-600">
+                <svg class="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span>載入中...</span>
+            </div>
+
+            <!-- 錯誤提示 -->
+            <div x-show="error" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm" x-text="error"></div>
+        </div>
+
+        <!-- 統計卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-red-100 rounded-md p-3">
+                        <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">過期任務</p>
+                        <p class="text-2xl font-bold text-gray-900" x-text="overdueTasks.length"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
+                        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">今日任務</p>
+                        <p class="text-2xl font-bold text-gray-900" x-text="todayTasks.length"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
+                        <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">未來 7 天</p>
+                        <p class="text-2xl font-bold text-gray-900" x-text="upcomingTasks.length"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任務列表 -->
+        <div class="space-y-6">
+            <!-- 過期任務 -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-red-600">過期任務 (<span x-text="overdueTasks.length"></span>)</h2>
+                </div>
+                <div class="p-6">
+                    <template x-if="overdueTasks.length === 0">
+                        <p class="text-gray-500 text-center py-4">暫無任務</p>
+                    </template>
+                    <div class="space-y-4">
+                        <template x-for="task in overdueTasks" :key="task.ID">
+                            <div class="border border-red-200 rounded-lg p-4 bg-red-50">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <h3 class="text-lg font-medium text-gray-900" x-text="task['標題']"></h3>
+                                        <p class="mt-1 text-sm text-gray-600" x-text="task['描述']"></p>
+                                        <div class="mt-2 flex items-center space-x-4 text-sm">
+                                            <span class="text-red-600" x-text="'到期日: ' + (task['到期日'] || '未設定')"></span>
+                                            <span :class="getStatusColor(task['狀態'])" x-text="getStatusLabel(task['狀態'])"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 今日任務 -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-blue-600">今日任務 (<span x-text="todayTasks.length"></span>)</h2>
+                </div>
+                <div class="p-6">
+                    <template x-if="todayTasks.length === 0">
+                        <p class="text-gray-500 text-center py-4">暫無任務</p>
+                    </template>
+                    <div class="space-y-4">
+                        <template x-for="task in todayTasks" :key="task.ID">
+                            <div class="border border-blue-200 rounded-lg p-4 bg-blue-50">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <h3 class="text-lg font-medium text-gray-900" x-text="task['標題']"></h3>
+                                        <p class="mt-1 text-sm text-gray-600" x-text="task['描述']"></p>
+                                        <div class="mt-2 flex items-center space-x-4 text-sm">
+                                            <span class="text-blue-600" x-text="'到期日: ' + (task['到期日'] || '未設定')"></span>
+                                            <span :class="getStatusColor(task['狀態'])" x-text="getStatusLabel(task['狀態'])"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 未來 7 天 -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-lg font-semibold text-green-600">未來 7 天 (<span x-text="upcomingTasks.length"></span>)</h2>
+                </div>
+                <div class="p-6">
+                    <template x-if="upcomingTasks.length === 0">
+                        <p class="text-gray-500 text-center py-4">暫無任務</p>
+                    </template>
+                    <div class="space-y-4">
+                        <template x-for="task in upcomingTasks" :key="task.ID">
+                            <div class="border border-green-200 rounded-lg p-4 bg-green-50">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex-1">
+                                        <h3 class="text-lg font-medium text-gray-900" x-text="task['標題']"></h3>
+                                        <p class="mt-1 text-sm text-gray-600" x-text="task['描述']"></p>
+                                        <div class="mt-2 flex items-center space-x-4 text-sm">
+                                            <span class="text-green-600" x-text="'到期日: ' + (task['到期日'] || '未設定')"></span>
+                                            <span :class="getStatusColor(task['狀態'])" x-text="getStatusLabel(task['狀態'])"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function crmApp() {
+            return {
+                tasks: [],
+                overdueTasks: [],
+                todayTasks: [],
+                upcomingTasks: [],
+                loading: false,
+                error: null,
+
+                init() {
+                    console.log('CRM App initialized');
+                    // 從 localStorage 載入快取資料
+                    this.loadFromCache();
+                },
+
+                loadFromCache() {
+                    try {
+                        const cachedData = localStorage.getItem('crm_tasks');
+                        if (cachedData) {
+                            this.tasks = JSON.parse(cachedData);
+                            this.categorizeTasks();
+                            console.log('已從快取載入任務資料');
+                        }
+                    } catch (error) {
+                        console.error('載入快取失敗：', error);
+                    }
+                },
+
+                saveToCache() {
+                    try {
+                        localStorage.setItem('crm_tasks', JSON.stringify(this.tasks));
+                    } catch (error) {
+                        console.error('儲存快取失敗：', error);
+                    }
+                },
+                
+                handleFileUpload(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+
+                    // 驗證檔案類型
+                    const validTypes = ['.xlsx', '.xls'];
+                    const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+                    if (!validTypes.includes(fileExt)) {
+                        this.error = '請選擇有效的 Excel 檔案（.xlsx 或 .xls）';
+                        alert(this.error);
+                        return;
+                    }
+
+                    this.loading = true;
+                    this.error = null;
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = new Uint8Array(e.target.result);
+                            const workbook = XLSX.read(data, { type: 'array' });
+
+                            if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                                throw new Error('Excel 檔案中沒有工作表');
+                            }
+
+                            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                            const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                            if (jsonData.length === 0) {
+                                throw new Error('Excel 檔案中沒有資料');
+                            }
+
+                            this.tasks = jsonData;
+                            this.categorizeTasks();
+                            this.saveToCache();
+
+                            this.loading = false;
+                            alert(`✅ 成功載入 ${this.tasks.length} 筆任務！`);
+                        } catch (error) {
+                            this.loading = false;
+                            this.error = '讀取檔案失敗：' + error.message;
+                            alert(this.error);
+                            console.error('Excel 讀取錯誤：', error);
+                        }
+                    };
+
+                    reader.onerror = () => {
+                        this.loading = false;
+                        this.error = '檔案讀取失敗，請重試';
+                        alert(this.error);
+                    };
+
+                    reader.readAsArrayBuffer(file);
+                },
+                
+                categorizeTasks() {
+                    const now = new Date();
+                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    const sevenDaysLater = new Date(today);
+                    sevenDaysLater.setDate(sevenDaysLater.getDate() + 7);
+
+                    this.overdueTasks = [];
+                    this.todayTasks = [];
+                    this.upcomingTasks = [];
+
+                    this.tasks.forEach(task => {
+                        if (task['狀態'] === 'completed') return;
+
+                        if (!task['到期日']) {
+                            this.todayTasks.push(task);
+                            return;
+                        }
+
+                        const dueDate = new Date(task['到期日']);
+                        // 修復：使用 toDateString() 比較日期，避免時分秒影響
+                        const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+
+                        if (dueDateOnly < today) {
+                            this.overdueTasks.push(task);
+                        } else if (dueDateOnly.getTime() === today.getTime()) {
+                            this.todayTasks.push(task);
+                        } else if (dueDateOnly < sevenDaysLater) {
+                            this.upcomingTasks.push(task);
+                        }
+                    });
+                },
+                
+                loadTasks() {
+                    document.querySelector('input[type="file"]').click();
+                },
+                
+                getStatusLabel(status) {
+                    const labels = {
+                        'critical': '緊急待辦',
+                        'this_week': '本週必做',
+                        'follow_up': '追蹤提醒',
+                        'waiting': '等待回覆',
+                        'completed': '已完成'
+                    };
+                    return labels[status] || status;
+                },
+                
+                getStatusColor(status) {
+                    const colors = {
+                        'critical': 'px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800',
+                        'this_week': 'px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800',
+                        'follow_up': 'px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800',
+                        'waiting': 'px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800',
+                        'completed': 'px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800'
+                    };
+                    return colors[status] || 'px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

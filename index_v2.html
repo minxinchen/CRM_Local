@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>任務總覽 - CRM 系統 V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50" x-data="crmApp()" x-init="init()">
+    <!-- 導覽列 -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex space-x-8">
+                    <a href="index_v2.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-blue-500 text-sm font-medium text-gray-900">
+                        任務總覽
+                    </a>
+                    <a href="customers.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        客戶管理
+                    </a>
+                    <a href="cases.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        案件管理
+                    </a>
+                    <a href="emails.html" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300">
+                        信件 Inbox
+                    </a>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button @click="showSettings = true" class="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+                        ⚙️ 設定
+                    </button>
+                    <button @click="saveToExcel()" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                        💾 儲存到 Excel
+                    </button>
+                    <button @click="showAddModal = true" class="px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                        ➕ 新增任務
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主要內容 -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-8 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">任務總覽</h1>
+                <p class="mt-2 text-sm text-gray-600">直接在網頁上管理您的任務，自動同步到 Excel</p>
+            </div>
+            <div x-show="fileHandle" class="text-sm text-green-600">
+                ✅ 已連接: <span x-text="fileName"></span>
+            </div>
+        </div>
+
+        <!-- 檔案設定提示 -->
+        <div x-show="!fileHandle" class="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm text-yellow-700">
+                        請先點擊「⚙️ 設定」選擇 Excel 檔案，才能自動儲存您的修改
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 統計卡片 -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-blue-100 rounded-md p-3">
+                        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">全部任務</p>
+                        <p class="text-2xl font-bold text-gray-900" x-text="tasks.length"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-red-100 rounded-md p-3">
+                        <svg class="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">過期任務</p>
+                        <p class="text-2xl font-bold text-gray-900" x-text="overdueTasks.length"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-yellow-100 rounded-md p-3">
+                        <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">今日任務</p>
+                        <p class="text-2xl font-bold text-gray-900" x-text="todayTasks.length"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0 bg-green-100 rounded-md p-3">
+                        <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="ml-4">
+                        <p class="text-sm font-medium text-gray-600">已完成</p>
+                        <p class="text-2xl font-bold text-gray-900" x-text="completedTasks.length"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 任務列表 -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold text-gray-900">所有任務</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">標題</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">描述</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">狀態</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">到期日</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-if="tasks.length === 0">
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                    暫無任務，點擊右上角「➕ 新增任務」開始使用
+                                </td>
+                            </tr>
+                        </template>
+                        <template x-for="task in tasks" :key="task.ID">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 text-sm font-medium text-gray-900" x-text="task['標題']"></td>
+                                <td class="px-6 py-4 text-sm text-gray-500" x-text="task['描述']"></td>
+                                <td class="px-6 py-4 text-sm">
+                                    <span :class="getStatusColor(task['狀態'])" x-text="getStatusLabel(task['狀態'])"></span>
+                                </td>
+                                <td class="px-6 py-4 text-sm text-gray-500" x-text="task['到期日'] || '未設定'"></td>
+                                <td class="px-6 py-4 text-right text-sm font-medium space-x-2">
+                                    <button @click="editTask(task)" class="text-blue-600 hover:text-blue-900">✏️ 編輯</button>
+                                    <button @click="deleteTask(task.ID)" class="text-red-600 hover:text-red-900">🗑️ 刪除</button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- 新增/編輯任務 Modal -->
+    <div x-show="showAddModal || showEditModal" x-cloak class="fixed z-10 inset-0 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showAddModal = false; showEditModal = false"></div>
+
+            <div class="bg-white rounded-lg overflow-hidden shadow-xl transform transition-all max-w-lg w-full">
+                <div class="bg-white px-6 py-4">
+                    <h3 class="text-lg font-medium text-gray-900" x-text="showEditModal ? '編輯任務' : '新增任務'"></h3>
+                </div>
+
+                <div class="px-6 py-4 space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">標題 *</label>
+                        <input type="text" x-model="formData['標題']"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">描述</label>
+                        <textarea x-model="formData['描述']" rows="3"
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">狀態</label>
+                        <select x-model="formData['狀態']"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            <option value="critical">緊急待辦</option>
+                            <option value="this_week">本週必做</option>
+                            <option value="follow_up">追蹤提醒</option>
+                            <option value="waiting">等待回覆</option>
+                            <option value="completed">已完成</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">到期日</label>
+                        <input type="date" x-model="formData['到期日']"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">案件 ID</label>
+                        <input type="number" x-model="formData['案件ID']"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
+                    <button @click="showAddModal = false; showEditModal = false"
+                            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        取消
+                    </button>
+                    <button @click="showEditModal ? updateTask() : addTask()"
+                            class="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                        <span x-text="showEditModal ? '更新' : '新增'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 設定 Modal -->
+    <div x-show="showSettings" x-cloak class="fixed z-10 inset-0 overflow-y-auto">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="showSettings = false"></div>
+
+            <div class="bg-white rounded-lg overflow-hidden shadow-xl transform transition-all max-w-lg w-full">
+                <div class="bg-white px-6 py-4">
+                    <h3 class="text-lg font-medium text-gray-900">Excel 檔案設定</h3>
+                </div>
+
+                <div class="px-6 py-4 space-y-4">
+                    <p class="text-sm text-gray-600">
+                        選擇要同步的 Excel 檔案，系統會自動載入現有資料，並將您的修改儲存回該檔案。
+                    </p>
+
+                    <div x-show="!fileHandle" class="space-y-3">
+                        <button @click="selectExcelFile()"
+                                class="w-full px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:border-blue-500 hover:text-blue-600">
+                            📁 選擇 Excel 檔案（tasks.xlsx）
+                        </button>
+
+                        <div class="bg-blue-50 border border-blue-200 rounded-md p-3">
+                            <p class="text-xs text-blue-800">
+                                💡 <strong>提示：</strong>選擇後會記住此檔案，之後的修改會自動寫入
+                            </p>
+                        </div>
+                    </div>
+
+                    <div x-show="fileHandle" class="space-y-3">
+                        <div class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-md">
+                            <div>
+                                <p class="text-sm font-medium text-green-900">已連接檔案</p>
+                                <p class="text-xs text-green-700" x-text="fileName"></p>
+                            </div>
+                            <button @click="disconnectFile()" class="text-sm text-red-600 hover:text-red-900">
+                                中斷連接
+                            </button>
+                        </div>
+
+                        <button @click="loadFromExcel()"
+                                class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                            🔄 重新載入 Excel 資料
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-6 py-4 flex justify-end">
+                    <button @click="showSettings = false"
+                            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50">
+                        關閉
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function crmApp() {
+            return {
+                tasks: [],
+                overdueTasks: [],
+                todayTasks: [],
+                completedTasks: [],
+                showAddModal: false,
+                showEditModal: false,
+                showSettings: false,
+                fileHandle: null,
+                fileName: '',
+                formData: {
+                    '標題': '',
+                    '描述': '',
+                    '狀態': 'this_week',
+                    '到期日': '',
+                    '案件ID': '',
+                    '建立日期': ''
+                },
+                editingId: null,
+
+                init() {
+                    console.log('CRM App V2 initialized');
+
+                    // 檢查瀏覽器支援
+                    if (!('showOpenFilePicker' in window)) {
+                        alert('⚠️ 您的瀏覽器不支援 File System Access API\n\n請使用 Chrome 86+ 或 Edge 86+\n或考慮使用 Electron 桌面版');
+                    }
+
+                    // 從 localStorage 載入資料
+                    this.loadFromCache();
+
+                    // 嘗試恢復檔案連接（需要使用者重新授權）
+                    const savedFileName = localStorage.getItem('crm_excel_filename');
+                    if (savedFileName) {
+                        this.fileName = savedFileName;
+                    }
+                },
+
+                async selectExcelFile() {
+                    try {
+                        const [fileHandle] = await window.showOpenFilePicker({
+                            types: [{
+                                description: 'Excel 檔案',
+                                accept: {
+                                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+                                    'application/vnd.ms-excel': ['.xls']
+                                }
+                            }],
+                            multiple: false
+                        });
+
+                        this.fileHandle = fileHandle;
+                        this.fileName = fileHandle.name;
+                        localStorage.setItem('crm_excel_filename', this.fileName);
+
+                        // 立即載入資料
+                        await this.loadFromExcel();
+
+                        alert('✅ 檔案已連接：' + this.fileName);
+                    } catch (error) {
+                        if (error.name !== 'AbortError') {
+                            console.error('選擇檔案失敗：', error);
+                            alert('選擇檔案失敗：' + error.message);
+                        }
+                    }
+                },
+
+                async loadFromExcel() {
+                    if (!this.fileHandle) {
+                        alert('請先選擇 Excel 檔案');
+                        return;
+                    }
+
+                    try {
+                        const file = await this.fileHandle.getFile();
+                        const arrayBuffer = await file.arrayBuffer();
+                        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+                        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+                            throw new Error('Excel 檔案中沒有工作表');
+                        }
+
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                        this.tasks = jsonData;
+                        this.saveToCache();
+                        this.categorizeTasks();
+
+                        alert('✅ 已從 Excel 載入 ' + this.tasks.length + ' 筆任務');
+                    } catch (error) {
+                        console.error('載入 Excel 失敗：', error);
+                        alert('載入 Excel 失敗：' + error.message);
+                    }
+                },
+
+                async saveToExcel() {
+                    if (!this.fileHandle) {
+                        alert('⚠️ 請先在設定中選擇 Excel 檔案');
+                        this.showSettings = true;
+                        return;
+                    }
+
+                    try {
+                        // 建立新的工作簿
+                        const worksheet = XLSX.utils.json_to_sheet(this.tasks);
+                        const workbook = XLSX.utils.book_new();
+                        XLSX.utils.book_append_sheet(workbook, worksheet, 'Tasks');
+
+                        // 轉換為 ArrayBuffer
+                        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+
+                        // 寫入檔案
+                        const writable = await this.fileHandle.createWritable();
+                        await writable.write(excelBuffer);
+                        await writable.close();
+
+                        this.saveToCache();
+                        alert('✅ 已成功儲存到 ' + this.fileName);
+                    } catch (error) {
+                        console.error('儲存 Excel 失敗：', error);
+                        alert('儲存 Excel 失敗：' + error.message + '\n\n可能需要重新選擇檔案授權');
+                    }
+                },
+
+                loadFromCache() {
+                    try {
+                        const cached = localStorage.getItem('crm_tasks');
+                        if (cached) {
+                            this.tasks = JSON.parse(cached);
+                            this.categorizeTasks();
+                            console.log('已從快取載入任務資料');
+                        }
+                    } catch (error) {
+                        console.error('載入快取失敗：', error);
+                    }
+                },
+
+                saveToCache() {
+                    try {
+                        localStorage.setItem('crm_tasks', JSON.stringify(this.tasks));
+                    } catch (error) {
+                        console.error('儲存快取失敗：', error);
+                    }
+                },
+
+                categorizeTasks() {
+                    const now = new Date();
+                    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+                    this.overdueTasks = [];
+                    this.todayTasks = [];
+                    this.completedTasks = [];
+
+                    this.tasks.forEach(task => {
+                        if (task['狀態'] === 'completed') {
+                            this.completedTasks.push(task);
+                            return;
+                        }
+
+                        if (!task['到期日']) return;
+
+                        const dueDate = new Date(task['到期日']);
+                        const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+
+                        if (dueDateOnly < today) {
+                            this.overdueTasks.push(task);
+                        } else if (dueDateOnly.getTime() === today.getTime()) {
+                            this.todayTasks.push(task);
+                        }
+                    });
+                },
+
+                addTask() {
+                    if (!this.formData['標題']) {
+                        alert('請輸入任務標題');
+                        return;
+                    }
+
+                    const newTask = {
+                        ID: this.tasks.length > 0 ? Math.max(...this.tasks.map(t => t.ID || 0)) + 1 : 1,
+                        '標題': this.formData['標題'],
+                        '描述': this.formData['描述'],
+                        '狀態': this.formData['狀態'],
+                        '到期日': this.formData['到期日'],
+                        '案件ID': this.formData['案件ID'],
+                        '建立日期': new Date().toISOString().slice(0, 19).replace('T', ' ')
+                    };
+
+                    this.tasks.push(newTask);
+                    this.saveToCache();
+                    this.categorizeTasks();
+                    this.showAddModal = false;
+                    this.resetForm();
+
+                    // 提示使用者儲存
+                    if (this.fileHandle) {
+                        if (confirm('任務已新增！要立即儲存到 Excel 嗎？')) {
+                            this.saveToExcel();
+                        }
+                    }
+                },
+
+                editTask(task) {
+                    this.editingId = task.ID;
+                    this.formData = { ...task };
+                    this.showEditModal = true;
+                },
+
+                updateTask() {
+                    const index = this.tasks.findIndex(t => t.ID === this.editingId);
+                    if (index !== -1) {
+                        this.tasks[index] = { ...this.formData, ID: this.editingId };
+                        this.saveToCache();
+                        this.categorizeTasks();
+                        this.showEditModal = false;
+                        this.resetForm();
+
+                        if (this.fileHandle) {
+                            if (confirm('任務已更新！要立即儲存到 Excel 嗎？')) {
+                                this.saveToExcel();
+                            }
+                        }
+                    }
+                },
+
+                deleteTask(id) {
+                    if (confirm('確定要刪除這個任務嗎？')) {
+                        this.tasks = this.tasks.filter(t => t.ID !== id);
+                        this.saveToCache();
+                        this.categorizeTasks();
+
+                        if (this.fileHandle) {
+                            if (confirm('任務已刪除！要立即儲存到 Excel 嗎？')) {
+                                this.saveToExcel();
+                            }
+                        }
+                    }
+                },
+
+                resetForm() {
+                    this.formData = {
+                        '標題': '',
+                        '描述': '',
+                        '狀態': 'this_week',
+                        '到期日': '',
+                        '案件ID': '',
+                        '建立日期': ''
+                    };
+                    this.editingId = null;
+                },
+
+                disconnectFile() {
+                    this.fileHandle = null;
+                    this.fileName = '';
+                    localStorage.removeItem('crm_excel_filename');
+                    this.showSettings = false;
+                },
+
+                getStatusLabel(status) {
+                    const labels = {
+                        'critical': '緊急待辦',
+                        'this_week': '本週必做',
+                        'follow_up': '追蹤提醒',
+                        'waiting': '等待回覆',
+                        'completed': '已完成'
+                    };
+                    return labels[status] || status;
+                },
+
+                getStatusColor(status) {
+                    const colors = {
+                        'critical': 'px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800',
+                        'this_week': 'px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800',
+                        'follow_up': 'px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800',
+                        'waiting': 'px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800',
+                        'completed': 'px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800'
+                    };
+                    return colors[status] || 'px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
