@@ -369,10 +369,11 @@
 
         const GOOGLE_SHEETS_CONFIG = {
             apiUrl: 'https://script.google.com/macros/s/AKfycbyhuJQUEV-pPa6BPft8wI5LdfnRaWwGsRFc1tNW9a6J_BAf6f2ui6z9CEPdhf7-zjVDmA/exec',
-            timeout: 10000,
-            retryAttempts: 3,
+            timeout: 5000, // 降低到 5 秒（從 10 秒）
+            retryAttempts: 2, // 降低重試次數（從 3 次）
             enableCache: true,
-            cacheExpiry: 300000 // 5 分鐘
+            cacheExpiry: 300000, // 5 分鐘
+            optimisticUI: true // 啟用樂觀更新
         };
 
         // Alpine.js Store - Google Sheets API 管理
@@ -519,8 +520,14 @@
                     '案件ID': ''
                 },
                 editingId: null,
+                initialized: false, // 防止重複初始化
 
                 async init() {
+                    if (this.initialized) {
+                        console.log('Tasks already initialized, skipping...');
+                        return;
+                    }
+                    this.initialized = true;
                     console.log('Tasks Store initialized');
                     await this.loadTasks();
                 },
@@ -541,14 +548,45 @@
                         return;
                     }
 
-                    try {
-                        await Alpine.store('sheets').create('tasks', this.formData);
-                        await this.loadTasks();
+                    // 樂觀更新：立即更新 UI
+                    if (GOOGLE_SHEETS_CONFIG.optimisticUI) {
+                        const tempId = Date.now(); // 臨時 ID
+                        const newTask = {
+                            ID: tempId,
+                            ...this.formData,
+                            '建立日期': new Date().toISOString().split('T')[0]
+                        };
+                        this.items.push(newTask);
                         this.showAddModal = false;
                         this.resetForm();
-                        alert('✅ 任務已新增並同步到 Google Sheets');
-                    } catch (error) {
-                        alert('新增任務失敗：' + error.message);
+
+                        // 背景同步到 Google Sheets
+                        Alpine.store('sheets').create('tasks', this.formData)
+                            .then(async (result) => {
+                                // 同步成功，用正確的 ID 替換臨時 ID
+                                const index = this.items.findIndex(t => t.ID === tempId);
+                                if (index !== -1 && result) {
+                                    this.items[index].ID = result.id || result.ID;
+                                }
+                                // 清除快取，以便下次載入時獲取最新數據
+                                Alpine.store('sheets').clearCache('tasks');
+                            })
+                            .catch(error => {
+                                // 同步失敗，回滾
+                                this.items = this.items.filter(t => t.ID !== tempId);
+                                alert('❌ 同步失敗：' + error.message);
+                            });
+                    } else {
+                        // 傳統方式：等待 API 完成
+                        try {
+                            await Alpine.store('sheets').create('tasks', this.formData);
+                            await this.loadTasks();
+                            this.showAddModal = false;
+                            this.resetForm();
+                            alert('✅ 任務已新增並同步到 Google Sheets');
+                        } catch (error) {
+                            alert('新增任務失敗：' + error.message);
+                        }
                     }
                 },
 
@@ -559,26 +597,69 @@
                 },
 
                 async updateTask() {
-                    try {
-                        await Alpine.store('sheets').update('tasks', this.editingId, this.formData);
-                        await this.loadTasks();
+                    // 樂觀更新：立即更新 UI
+                    if (GOOGLE_SHEETS_CONFIG.optimisticUI) {
+                        const index = this.items.findIndex(t => t.ID === this.editingId);
+                        const oldTask = { ...this.items[index] }; // 保存舊數據以便回滾
+
+                        // 立即更新 UI
+                        this.items[index] = { ...this.items[index], ...this.formData };
                         this.showEditModal = false;
                         this.resetForm();
-                        alert('✅ 任務已更新並同步到 Google Sheets');
-                    } catch (error) {
-                        alert('更新任務失敗：' + error.message);
+
+                        // 背景同步
+                        Alpine.store('sheets').update('tasks', this.editingId, this.formData)
+                            .then(() => {
+                                // 清除快取
+                                Alpine.store('sheets').clearCache('tasks');
+                            })
+                            .catch(error => {
+                                // 回滾
+                                this.items[index] = oldTask;
+                                alert('❌ 更新失敗：' + error.message);
+                            });
+                    } else {
+                        // 傳統方式
+                        try {
+                            await Alpine.store('sheets').update('tasks', this.editingId, this.formData);
+                            await this.loadTasks();
+                            this.showEditModal = false;
+                            this.resetForm();
+                            alert('✅ 任務已更新並同步到 Google Sheets');
+                        } catch (error) {
+                            alert('更新任務失敗：' + error.message);
+                        }
                     }
                 },
 
                 async deleteTask(id) {
                     if (!confirm('確定要刪除這個任務嗎？')) return;
 
-                    try {
-                        await Alpine.store('sheets').delete('tasks', id);
-                        await this.loadTasks();
-                        alert('✅ 任務已刪除並同步到 Google Sheets');
-                    } catch (error) {
-                        alert('刪除任務失敗：' + error.message);
+                    // 樂觀更新：立即從 UI 移除
+                    if (GOOGLE_SHEETS_CONFIG.optimisticUI) {
+                        const deletedTask = this.items.find(t => t.ID === id);
+                        this.items = this.items.filter(t => t.ID !== id);
+
+                        // 背景同步
+                        Alpine.store('sheets').delete('tasks', id)
+                            .then(() => {
+                                // 清除快取
+                                Alpine.store('sheets').clearCache('tasks');
+                            })
+                            .catch(error => {
+                                // 回滾：重新加入
+                                this.items.push(deletedTask);
+                                alert('❌ 刪除失敗：' + error.message);
+                            });
+                    } else {
+                        // 傳統方式
+                        try {
+                            await Alpine.store('sheets').delete('tasks', id);
+                            await this.loadTasks();
+                            alert('✅ 任務已刪除並同步到 Google Sheets');
+                        } catch (error) {
+                            alert('刪除任務失敗：' + error.message);
+                        }
                     }
                 },
 
