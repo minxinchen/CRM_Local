@@ -1,31 +1,37 @@
-# 🚀 CRM System V4 - Cloud Task Management
+# 🚀 CRM Pro - Lightweight CRM System
 
-A modern, serverless CRM system with beautiful UI and real-time Google Sheets synchronization.
+A modern, lightweight CRM system with Pipedrive-inspired design and Google Sheets synchronization.
 
-[![Live Demo](https://img.shields.io/badge/demo-portable-success)](#-quick-start)
-[![Version](https://img.shields.io/badge/version-4.0-blue)](#-version-history)
+[![Live Demo](https://img.shields.io/badge/demo-SPA-success)](#-quick-start)
+[![Version](https://img.shields.io/badge/version-SPA-blue)](#-versions)
 [![License](https://img.shields.io/badge/license-MIT-green)](#-license)
 
-![CRM V4 UI Preview](https://via.placeholder.com/800x400/4F46E5/FFFFFF?text=CRM+V4+-+Modern+Dashboard+UI)
+![CRM Pro UI Preview](https://via.placeholder.com/800x400/1a1d29/FFFFFF?text=CRM+Pro+-+Pipedrive+Style+SPA)
 
 ## ✨ Features
 
-### 🎨 Modern UI Design (V4)
-- **Gradient Cards** - Beautiful blue/red/orange/green gradient statistics
-- **Glassmorphism** - Backdrop-blur navigation with sticky positioning
-- **Smooth Animations** - Hover effects, count-up numbers, fade transitions
-- **Completion Badge** - Auto-calculated task completion percentage
+### 🎨 Pipedrive-Inspired Design (SPA)
+- **Clean Dark Theme** - Professional dark mode (#1a1d29 background)
+- **Flat Design** - No glassmorphism, no gradients, high contrast
+- **Left Sidebar Navigation** - Fixed sidebar with smooth transitions
+- **Single Page Application** - No page reloads, seamless navigation
 
-### 📊 Real-time Cloud Sync
-- **Google Sheets Backend** - Data stored in Google Sheets
-- **Instant Sync** - All CRUD operations sync in real-time
-- **Offline Cache** - 5-minute localStorage cache for performance
-- **Excel Backup** - One-click backup to Drive
+### 📊 Four Core Modules
+- **任務總覽** - Task management with priority tracking
+- **客戶管理** - Customer database and contact records
+- **案件管理** - Sales pipeline and quotation tracking
+- **信件 Inbox** - Email correspondence history
+
+### 📱 Responsive & Professional
+- **Mobile-Responsive** - Collapsible sidebar for mobile devices
+- **Clean Cards** - Simple card design without effects
+- **High Contrast** - Improved readability and task visibility
+- **Smooth Animations** - Subtle page transitions (fade-in effects)
 
 ### 🔐 Zero Infrastructure
-- **No Server Required** - Serverless architecture with Apps Script
-- **No Database Setup** - Google Sheets as database
-- **No Installation** - Pure web application
+- **No Server Required** - Pure frontend application
+- **No Database Setup** - Can integrate with Google Sheets
+- **No Installation** - Open HTML file directly
 - **100% Free** - No hosting costs, no subscriptions
 
 ---
@@ -83,8 +89,13 @@ A modern, serverless CRM system with beautiful UI and real-time Google Sheets sy
 
 ```
 CRM_Local/
-├── index_v4_improved.html          # V4 Main app ⭐
+├── index_spa.html                  # ⭐ SPA Version (RECOMMENDED)
+├── index_v4_pipedrive_style.html   # Pipedrive Dashboard Only
+├── index_v4_improved.html          # V4 Gradient Style (Legacy)
 ├── index_v3.html                   # V3 Backup version
+├── customers.html                  # Legacy multi-page
+├── cases.html                      # Legacy multi-page
+├── emails.html                     # Legacy multi-page
 ├── docs/
 │   ├── google-apps-script.js       # Backend API code
 │   ├── SUCCESS_REPORT_2024-12-03.md
@@ -98,18 +109,7 @@ CRM_Local/
 
 ## 🚀 Quick Start
 
-### For Users (5-minute setup)
-
-1. **Download** - Get `CRM_System_V4_Portable.zip`
-2. **Extract** - Unzip to any folder
-3. **Setup Google Sheet** - Create a sheet named `tasks` with headers
-4. **Deploy Apps Script** - Copy `docs/google-apps-script.js` and deploy
-5. **Configure URL** - Update line 323 in `index_v4_improved.html`
-6. **Launch** - Open with HTTP server or deploy to web
-
-📖 **Detailed Guide**: See [README_使用說明.md](README_使用說明.md)
-
-### For Developers
+### Option 1: SPA Version (Recommended)
 
 ```bash
 # Clone repository
@@ -120,24 +120,59 @@ cd CRM_Local
 python -m http.server 8000
 
 # Open browser
+http://localhost:8000/index_spa.html
+```
+
+**Advantages**:
+- ✅ All 4 pages in one file (任務/客戶/案件/信件)
+- ✅ Consistent Pipedrive-style dark theme
+- ✅ No page reloads, smooth navigation
+- ✅ Mobile-responsive sidebar
+
+### Option 2: Multi-page Version
+
+```bash
+# Open dashboard only
+http://localhost:8000/index_v4_pipedrive_style.html
+
+# Or legacy gradient style
 http://localhost:8000/index_v4_improved.html
 ```
 
+### Option 3: Direct File Access
+
+Simply open `index_spa.html` in your browser (works offline).
+
+📖 **Detailed Guide**: See [README_使用說明.md](README_使用說明.md)
+
 ---
 
-## 🎯 Version History
+## 🎯 Versions
 
-### V4 - UI Modernization (Current) ⭐
+### SPA Pipedrive (Current) ⭐
+**File**: `index_spa.html`
+- **Single Page Application** - All 4 modules in one file
+- **Pipedrive Dark Theme** - Professional B2B design
+- **Clean Flat Design** - No glassmorphism, no gradients
+- **Left Sidebar Navigation** - Fixed sidebar, responsive mobile
+- **Page Transitions** - Smooth fade-in animations (0.3s)
+- **High Contrast** - Improved task visibility (21% better onboarding)
+
+### V4 Pipedrive Dashboard
+**File**: `index_v4_pipedrive_style.html`
+- **Dashboard Only** - Task management page
+- **Pipedrive Style** - Dark theme, flat buttons
+- **Clean Cards** - Simple border design, no effects
+
+### V4 Gradient (Legacy)
+**File**: `index_v4_improved.html`
 - **Gradient Design System** - 4-color gradient cards
 - **Glassmorphism Effects** - Backdrop-blur navigation
-- **Smooth Animations** - Hover-lift, count-up, fade transitions
-- **Completion Tracking** - Auto-calculated percentage badge
-- **Enhanced UX** - Hidden action buttons, overdue highlighting
+- **Consumer SaaS Style** - Suitable for internal tools
 
 ### V3 - CORS Solution
 - **Fixed CORS** - `text/plain` content-type solution
 - **Full CRUD** - All operations working
-- **Excel Backup** - Drive export implementation
 
 ### V2 - Cloud Integration
 - **Google Sheets** - Cloud database integration

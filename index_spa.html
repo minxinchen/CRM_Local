@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM Pro - Pipedrive Style SPA</title>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS v3 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        'crm-bg': '#1a1d29',
+                        'crm-card': '#23272f',
+                        'crm-sidebar': '#141722',
+                        'crm-border': '#2d3139',
+                        'crm-text': '#e8e9ed',
+                        'crm-muted': '#9ca3af',
+                        'crm-accent': '#4f46e5',
+                        'crm-success': '#10b981',
+                        'crm-warning': '#f59e0b',
+                        'crm-danger': '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Alpine.js v3 -->
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        body {
+            background: #1a1d29;
+            color: #e8e9ed;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2d3139;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a3f4b;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            height: 100vh;
+            width: 240px;
+            background: #141722;
+            border-right: 1px solid #2d3139;
+            display: flex;
+            flex-direction: column;
+            z-index: 40;
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+
+        @media (min-width: 1024px) {
+            .sidebar-hidden {
+                transform: translateX(0);
+            }
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 240px;
+            transition: margin-left 0.3s ease;
+        }
+
+        @media (max-width: 1023px) {
+            .main-content {
+                margin-left: 0;
+            }
+        }
+
+        /* Card Style */
+        .crm-card {
+            background: #23272f;
+            border: 1px solid #2d3139;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .crm-card:hover {
+            border-color: #3a3f4b;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Button Styles */
+        .btn-primary {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            background: #4338ca;
+        }
+
+        .btn-secondary {
+            background: #23272f;
+            color: #e8e9ed;
+            border: 1px solid #2d3139;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #2d3139;
+            border-color: #3a3f4b;
+        }
+
+        /* Stat Cards */
+        .stat-card {
+            background: #23272f;
+            border: 1px solid #2d3139;
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: #3a3f4b;
+        }
+
+        /* Navigation Links */
+        .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 16px;
+            margin: 4px 12px;
+            border-radius: 8px;
+            color: #9ca3af;
+            font-size: 14px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .nav-link:hover {
+            background: #1f232f;
+            color: #e8e9ed;
+        }
+
+        .nav-link.active {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .nav-link svg {
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
+        }
+
+        /* Table Styles */
+        .crm-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .crm-table thead {
+            background: #1a1d29;
+        }
+
+        .crm-table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #2d3139;
+        }
+
+        .crm-table td {
+            padding: 16px;
+            border-bottom: 1px solid #2d3139;
+            font-size: 14px;
+            color: #e8e9ed;
+        }
+
+        .crm-table tbody tr {
+            background: #23272f;
+            transition: background 0.2s ease;
+        }
+
+        .crm-table tbody tr:hover {
+            background: #2d3139;
+        }
+
+        /* Status Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-critical {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+        }
+
+        .badge-this-week {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+        }
+
+        .badge-completed {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .badge-follow-up {
+            background: rgba(79, 70, 229, 0.1);
+            color: #4f46e5;
+        }
+
+        .badge-waiting {
+            background: rgba(156, 163, 175, 0.1);
+            color: #9ca3af;
+        }
+
+        .badge-active {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+        }
+
+        .badge-pending {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+        }
+
+        .badge-closed {
+            background: rgba(156, 163, 175, 0.1);
+            color: #9ca3af;
+        }
+
+        .badge-unread {
+            background: rgba(79, 70, 229, 0.1);
+            color: #4f46e5;
+        }
+
+        .badge-read {
+            background: rgba(156, 163, 175, 0.1);
+            color: #9ca3af;
+        }
+
+        /* Page Transition */
+        .page-content {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body x-data="{ currentPage: 'dashboard', sidebarOpen: true }">
+
+    <!-- Sidebar -->
+    <aside class="sidebar" :class="{ 'sidebar-hidden': !sidebarOpen }">
+        <!-- Logo -->
+        <div class="p-6 border-b border-crm-border">
+            <h1 class="text-xl font-bold text-white">CRM Pro</h1>
+            <p class="text-xs text-crm-muted mt-1">任務管理系統</p>
+        </div>
+
+        <!-- Navigation -->
+        <nav class="flex-1 py-6 overflow-y-auto">
+            <a @click="currentPage = 'dashboard'" class="nav-link" :class="{ 'active': currentPage === 'dashboard' }">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                任務總覽
+            </a>
+            <a @click="currentPage = 'customers'" class="nav-link" :class="{ 'active': currentPage === 'customers' }">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                </svg>
+                客戶管理
+            </a>
+            <a @click="currentPage = 'cases'" class="nav-link" :class="{ 'active': currentPage === 'cases' }">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                </svg>
+                案件管理
+            </a>
+            <a @click="currentPage = 'emails'" class="nav-link" :class="{ 'active': currentPage === 'emails' }">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                信件 Inbox
+            </a>
+        </nav>
+
+        <!-- Bottom Actions -->
+        <div class="p-4 border-t border-crm-border">
+            <button class="w-full btn-secondary text-sm" onclick="alert('設定功能開發中')">
+                <svg class="inline w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                設定
+            </button>
+        </div>
+    </aside>
+
+    <!-- Mobile Menu Toggle -->
+    <button @click="sidebarOpen = !sidebarOpen"
+        class="lg:hidden fixed top-4 left-4 z-50 p-2 bg-crm-card border border-crm-border rounded-lg text-white">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+        </svg>
+    </button>
+
+    <!-- Main Content -->
+    <main class="main-content min-h-screen">
+
+        <!-- Dashboard Page -->
+        <div x-show="currentPage === 'dashboard'" x-cloak class="page-content">
+            <div class="bg-crm-sidebar border-b border-crm-border">
+                <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">任務總覽</h2>
+                        <p class="text-sm text-crm-muted mt-1">雲端協作 + 自動同步到 Google Sheets</p>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <div class="flex items-center text-xs text-crm-muted">
+                            <span class="w-2 h-2 rounded-full bg-crm-success mr-2 animate-pulse"></span>
+                            已同步
+                        </div>
+                        <button class="btn-secondary">💾 備份</button>
+                        <button class="btn-primary">➕ 新增任務</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="max-w-7xl mx-auto px-6 py-8">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">全部任務</p>
+                                <p class="text-4xl font-bold text-white">24</p>
+                            </div>
+                            <div class="p-3 rounded-lg bg-crm-accent/10">
+                                <svg class="h-6 w-6 text-crm-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">逾期未完成</p>
+                                <p class="text-4xl font-bold text-crm-danger">3</p>
+                            </div>
+                            <div class="p-3 rounded-lg bg-crm-danger/10">
+                                <svg class="h-6 w-6 text-crm-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">本週到期</p>
+                                <p class="text-4xl font-bold text-crm-warning">8</p>
+                            </div>
+                            <div class="p-3 rounded-lg bg-crm-warning/10">
+                                <svg class="h-6 w-6 text-crm-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">已完成</p>
+                                <p class="text-4xl font-bold text-crm-success">13</p>
+                                <p class="text-xs text-crm-success mt-1">54% 完成率</p>
+                            </div>
+                            <div class="p-3 rounded-lg bg-crm-success/10">
+                                <svg class="h-6 w-6 text-crm-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="crm-card p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-white">任務列表</h3>
+                        <div class="flex items-center space-x-3">
+                            <input type="text" placeholder="搜尋任務..."
+                                class="px-4 py-2 bg-crm-bg border border-crm-border rounded-lg text-sm text-white placeholder-crm-muted focus:outline-none focus:border-crm-accent">
+                            <select class="px-4 py-2 bg-crm-bg border border-crm-border rounded-lg text-sm text-white focus:outline-none focus:border-crm-accent">
+                                <option>全部狀態</option>
+                                <option>緊急</option>
+                                <option>本週</option>
+                                <option>已完成</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <table class="crm-table">
+                        <thead>
+                            <tr>
+                                <th>標題</th>
+                                <th>描述</th>
+                                <th>狀態</th>
+                                <th>到期日</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-semibold">找總經理討論 SN25038 報價</td>
+                                <td class="text-crm-muted">需要確認機台配置和交期</td>
+                                <td><span class="badge badge-critical">🚨 緊急</span></td>
+                                <td>2024-12-15</td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">編輯</button>
+                                    <button class="text-crm-danger hover:text-crm-danger/80">刪除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold">回覆德國客戶技術問題</td>
+                                <td class="text-crm-muted">關於 MOC-22 的加工精度</td>
+                                <td><span class="badge badge-this-week">📌 本週</span></td>
+                                <td>2024-12-18</td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">編輯</button>
+                                    <button class="text-crm-danger hover:text-crm-danger/80">刪除</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold">準備展覽資料</td>
+                                <td class="text-crm-muted">EMO 2025 展覽型錄和 DM</td>
+                                <td><span class="badge badge-completed">✅ 已完成</span></td>
+                                <td>2024-12-10</td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">編輯</button>
+                                    <button class="text-crm-danger hover:text-crm-danger/80">刪除</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customers Page -->
+        <div x-show="currentPage === 'customers'" x-cloak class="page-content">
+            <div class="bg-crm-sidebar border-b border-crm-border">
+                <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">客戶管理</h2>
+                        <p class="text-sm text-crm-muted mt-1">管理客戶資料和聯絡記錄</p>
+                    </div>
+                    <button class="btn-primary">➕ 新增客戶</button>
+                </div>
+            </div>
+
+            <div class="max-w-7xl mx-auto px-6 py-8">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">總客戶數</p>
+                                <p class="text-4xl font-bold text-white">156</p>
+                            </div>
+                            <div class="p-3 rounded-lg bg-crm-accent/10">
+                                <svg class="h-6 w-6 text-crm-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">活躍客戶</p>
+                                <p class="text-4xl font-bold text-crm-success">89</p>
+                            </div>
+                            <div class="p-3 rounded-lg bg-crm-success/10">
+                                <svg class="h-6 w-6 text-crm-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">本月新增</p>
+                                <p class="text-4xl font-bold text-crm-warning">12</p>
+                            </div>
+                            <div class="p-3 rounded-lg bg-crm-warning/10">
+                                <svg class="h-6 w-6 text-crm-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="crm-card p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-white">客戶列表</h3>
+                        <input type="text" placeholder="搜尋客戶..."
+                            class="px-4 py-2 bg-crm-bg border border-crm-border rounded-lg text-sm text-white placeholder-crm-muted focus:outline-none focus:border-crm-accent">
+                    </div>
+
+                    <table class="crm-table">
+                        <thead>
+                            <tr>
+                                <th>公司名稱</th>
+                                <th>聯絡人</th>
+                                <th>Email</th>
+                                <th>電話</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-semibold">德國精密機械 GmbH</td>
+                                <td>Hans Mueller</td>
+                                <td class="text-crm-muted">h.mueller@company.de</td>
+                                <td>+49 123 456789</td>
+                                <td><span class="badge badge-active">✅ 活躍</span></td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">查看</button>
+                                    <button class="text-crm-muted hover:text-crm-text">編輯</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold">日本工業株式會社</td>
+                                <td>田中太郎</td>
+                                <td class="text-crm-muted">tanaka@company.jp</td>
+                                <td>+81 3 1234 5678</td>
+                                <td><span class="badge badge-active">✅ 活躍</span></td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">查看</button>
+                                    <button class="text-crm-muted hover:text-crm-text">編輯</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold">美國製造有限公司</td>
+                                <td>John Smith</td>
+                                <td class="text-crm-muted">j.smith@company.com</td>
+                                <td>+1 555 123 4567</td>
+                                <td><span class="badge badge-pending">⏳ 待跟進</span></td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">查看</button>
+                                    <button class="text-crm-muted hover:text-crm-text">編輯</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cases Page -->
+        <div x-show="currentPage === 'cases'" x-cloak class="page-content">
+            <div class="bg-crm-sidebar border-b border-crm-border">
+                <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">案件管理</h2>
+                        <p class="text-sm text-crm-muted mt-1">追蹤銷售案件和報價進度</p>
+                    </div>
+                    <button class="btn-primary">➕ 新增案件</button>
+                </div>
+            </div>
+
+            <div class="max-w-7xl mx-auto px-6 py-8">
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-8">
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">進行中</p>
+                                <p class="text-4xl font-bold text-crm-accent">18</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">報價中</p>
+                                <p class="text-4xl font-bold text-crm-warning">7</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">已成交</p>
+                                <p class="text-4xl font-bold text-crm-success">45</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">已關閉</p>
+                                <p class="text-4xl font-bold text-crm-muted">12</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="crm-card p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-white">案件列表</h3>
+                        <select class="px-4 py-2 bg-crm-bg border border-crm-border rounded-lg text-sm text-white focus:outline-none focus:border-crm-accent">
+                            <option>全部案件</option>
+                            <option>進行中</option>
+                            <option>報價中</option>
+                            <option>已成交</option>
+                        </select>
+                    </div>
+
+                    <table class="crm-table">
+                        <thead>
+                            <tr>
+                                <th>案件編號</th>
+                                <th>客戶</th>
+                                <th>產品</th>
+                                <th>金額</th>
+                                <th>狀態</th>
+                                <th>負責人</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-semibold">SN25038</td>
+                                <td>德國精密機械</td>
+                                <td class="text-crm-muted">MOC-22 x 2 台</td>
+                                <td>€180,000</td>
+                                <td><span class="badge badge-active">📝 報價中</span></td>
+                                <td>王小明</td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">查看</button>
+                                    <button class="text-crm-muted hover:text-crm-text">編輯</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold">SN25039</td>
+                                <td>日本工業株式會社</td>
+                                <td class="text-crm-muted">SOC-30 x 1 台</td>
+                                <td>¥12,000,000</td>
+                                <td><span class="badge badge-active">🔄 進行中</span></td>
+                                <td>李小華</td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">查看</button>
+                                    <button class="text-crm-muted hover:text-crm-text">編輯</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold">SN25040</td>
+                                <td>美國製造</td>
+                                <td class="text-crm-muted">SGE-40 x 1 台</td>
+                                <td>$250,000</td>
+                                <td><span class="badge badge-completed">✅ 已成交</span></td>
+                                <td>陳大明</td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">查看</button>
+                                    <button class="text-crm-muted hover:text-crm-text">編輯</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emails Page -->
+        <div x-show="currentPage === 'emails'" x-cloak class="page-content">
+            <div class="bg-crm-sidebar border-b border-crm-border">
+                <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">信件 Inbox</h2>
+                        <p class="text-sm text-crm-muted mt-1">客戶往來信件記錄</p>
+                    </div>
+                    <button class="btn-primary">✉️ 寫信</button>
+                </div>
+            </div>
+
+            <div class="max-w-7xl mx-auto px-6 py-8">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">未讀信件</p>
+                                <p class="text-4xl font-bold text-crm-accent">8</p>
+                            </div>
+                            <div class="p-3 rounded-lg bg-crm-accent/10">
+                                <svg class="h-6 w-6 text-crm-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">今日收件</p>
+                                <p class="text-4xl font-bold text-white">23</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-sm font-medium text-crm-muted mb-1">待回覆</p>
+                                <p class="text-4xl font-bold text-crm-warning">5</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="crm-card p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-lg font-semibold text-white">收件匣</h3>
+                        <div class="flex items-center space-x-3">
+                            <select class="px-4 py-2 bg-crm-bg border border-crm-border rounded-lg text-sm text-white focus:outline-none focus:border-crm-accent">
+                                <option>全部信件</option>
+                                <option>未讀</option>
+                                <option>待回覆</option>
+                                <option>已封存</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <table class="crm-table">
+                        <thead>
+                            <tr>
+                                <th>寄件者</th>
+                                <th>主旨</th>
+                                <th>日期</th>
+                                <th>狀態</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="font-semibold">Hans Mueller</td>
+                                <td class="text-crm-muted">Re: SN25038 報價問題</td>
+                                <td>2024-12-12 10:30</td>
+                                <td><span class="badge badge-unread">📬 未讀</span></td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">閱讀</button>
+                                    <button class="text-crm-muted hover:text-crm-text">封存</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold">田中太郎</td>
+                                <td class="text-crm-muted">交期確認</td>
+                                <td>2024-12-12 09:15</td>
+                                <td><span class="badge badge-unread">📬 未讀</span></td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">閱讀</button>
+                                    <button class="text-crm-muted hover:text-crm-text">封存</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="font-semibold">John Smith</td>
+                                <td class="text-crm-muted">Thank you for the quotation</td>
+                                <td>2024-12-11 16:45</td>
+                                <td><span class="badge badge-read">✅ 已讀</span></td>
+                                <td>
+                                    <button class="text-crm-accent hover:text-crm-accent/80 mr-3">閱讀</button>
+                                    <button class="text-crm-muted hover:text-crm-text">封存</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+</body>
+
+</html>
